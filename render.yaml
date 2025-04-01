@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: group-home-scheduler
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: group_home_scheduler_db
+          property: connectionString 
