@@ -4,8 +4,10 @@ services:
     env: python
     region: ohio
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app
+    buildCommand: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: gunicorn "app:app"
     pythonVersion: 3.11.0
     envVars:
       - key: FLASK_ENV
@@ -17,7 +19,7 @@ services:
           name: group_home_scheduler_db
           property: connectionString
       - key: FLASK_APP
-        value: wsgi.py
+        value: app
       - key: GUNICORN_WORKERS
         value: "4"
       - key: GUNICORN_TIMEOUT

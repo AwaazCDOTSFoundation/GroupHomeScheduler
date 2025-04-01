@@ -1,7 +1,7 @@
 Flask==2.2.5
-Flask-SQLAlchemy==2.5.1
+Flask-SQLAlchemy==3.0.2
 python-dateutil==2.8.2
-SQLAlchemy==2.0.27
+SQLAlchemy==1.4.46
 Werkzeug==2.2.3
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
