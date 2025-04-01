@@ -1,15 +1,8 @@
 Flask==2.2.5
 Flask-SQLAlchemy==2.5.1
 python-dateutil==2.8.2
-<<<<<<< HEAD
 SQLAlchemy==2.0.27
 Werkzeug==2.2.3
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
-python-dotenv==1.0.0 
-=======
-SQLAlchemy==1.4.51
-Werkzeug==2.2.3
-gunicorn==21.2.0
-psycopg2-binary==2.9.9 
->>>>>>> 007bfcd2e349b9cd78e5f558cd16facd3e0e794d
+python-dotenv==1.0.0
