@@ -4,25 +4,54 @@ services:
     env: python
     region: ohio
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt psycopg2-binary==2.9.9
+      python -c "
+      import time
+      from sqlalchemy import create_engine, text
+      import os
+
+      # Wait for database to be ready
+      time.sleep(10)
+      
+      # Get database URL from environment
+      db_url = os.environ.get('DATABASE_URL')
+      if db_url.startswith('postgres://'):
+          db_url = db_url.replace('postgres://', 'postgresql://', 1)
+      
+      # Create engine
+      engine = create_engine(db_url)
+      
+      print('Connecting to database...')
+      with engine.connect() as conn:
+          # Drop all tables forcefully
+          print('Dropping all tables forcefully...')
+          conn.execute(text('DROP SCHEMA public CASCADE;'))
+          conn.execute(text('CREATE SCHEMA public;'))
+          conn.execute(text('GRANT ALL ON SCHEMA public TO public;'))
+          print('Database reset complete!')
+      "
     startCommand: |
       python -c "
       from app import create_app, db
       from app.models import Caregiver, Shift
       from datetime import datetime, timedelta
+      import time
       
       print('Starting database initialization...')
       app = create_app()
       
+      # Wait for database to be ready
+      time.sleep(5)
+      
       with app.app_context():
-          print('Dropping all tables...')
-          db.drop_all()
           print('Creating all tables...')
           db.create_all()
           
           print('Creating caregivers...')
           caregivers = ['MB', 'Teontae', 'MG', 'Amanda', 'Michelle', 'Fatima', 'Kisha']
           for name in caregivers:
+              print(f'Adding caregiver: {name}')
               caregiver = Caregiver(name=name)
               db.session.add(caregiver)
           db.session.commit()
@@ -80,14 +109,19 @@ services:
               }
           }
           
+          print('Getting caregiver IDs...')
           caregivers = {c.name: c.id for c in Caregiver.query.all()}
+          print(f'Caregiver IDs: {caregivers}')
+          
           current_date = datetime(2025, 4, 7)
           end_date = datetime(2025, 5, 31)
           
+          print('Creating shifts from {current_date} to {end_date}...')
           while current_date <= end_date:
               day_pattern = weekly_pattern[current_date.weekday()]
               for shift_type, caregiver_name in day_pattern.items():
                   if not (caregiver_name == 'Amanda' and datetime(2025, 4, 28) <= current_date <= datetime(2025, 5, 2)):
+                      print(f'Adding shift: {current_date.date()} - {shift_type} - {caregiver_name}')
                       shift = Shift(
                           date=current_date.date(),
                           shift_type=shift_type,
@@ -98,6 +132,13 @@ services:
           
           db.session.commit()
           print('Database initialization complete!')
+          
+          # Verify the data
+          print('Verifying data...')
+          all_caregivers = Caregiver.query.all()
+          print(f'Caregivers in database: {[c.name for c in all_caregivers]}')
+          shift_count = Shift.query.count()
+          print(f'Total shifts created: {shift_count}')
       " && gunicorn wsgi:app
     envVars:
       - key: DATABASE_URL
