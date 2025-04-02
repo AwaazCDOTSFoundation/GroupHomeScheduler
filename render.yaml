@@ -5,16 +5,20 @@ services:
     region: ohio
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python init_db.py && python wsgi.py
+    startCommand: gunicorn wsgi:app
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
           name: grouphomescheduler-db
           property: connectionString
       - key: FLASK_APP
-        value: app
+        value: wsgi.py
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
       - key: GUNICORN_WORKERS
         value: "4"
       - key: GUNICORN_TIMEOUT
@@ -28,5 +32,7 @@ services:
 
 databases:
   - name: grouphomescheduler-db
+    databaseName: grouphomescheduler
+    user: grouphomescheduler
     plan: free
     ipAllowList: [] 
