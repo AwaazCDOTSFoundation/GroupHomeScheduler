@@ -1,18 +1,32 @@
 import os
-import sys
+from app import create_app, db
+from app.models import Caregiver, Shift
+from app.config import ShiftConfig
 import logging
 
-# Add the project root directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from app import create_app, db
-
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = create_app()
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port) 
+def initialize_database():
+    with app.app_context():
+        logger.debug("Creating database tables...")
+        db.create_all()
+        
+        # Initialize caregivers if none exist
+        if Caregiver.query.count() == 0:
+            logger.debug("Initializing caregivers...")
+            for name in ShiftConfig.CAREGIVERS:
+                caregiver = Caregiver(name=name)
+                db.session.add(caregiver)
+            db.session.commit()
+            logger.debug(f"Added {len(ShiftConfig.CAREGIVERS)} caregivers")
+
+if __name__ == '__main__':
+    initialize_database()
+    app.run(debug=True) 
