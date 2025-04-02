@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="caregiver-schedule">
+    <div class="header-section mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <h2>{{ caregiver.name }}'s Schedule</h2>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Switch Caregiver
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item {% if caregiver.name == 'Amanda' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='Amanda') }}">Amanda</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'Fatima' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='Fatima') }}">Fatima</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'Kisha' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='Kisha') }}">Kisha</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'MB' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='MB') }}">MB</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'MG' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='MG') }}">MG</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'Michelle' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='Michelle') }}">Michelle</a></li>
+                        <li><a class="dropdown-item {% if caregiver.name == 'Teontae' %}active{% endif %}" href="{{ url_for('views.caregiver_schedule', caregiver_name='Teontae') }}">Teontae</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('views.monthly_view') }}">Back to Monthly View</a></li>
+                    </ul>
+                </div>
+                <a href="{{ url_for('views.monthly_view') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-calendar"></i> Monthly View
+                </a>
+            </div>
+            <div class="stats-box">
+                <div class="total-hours">Total Hours: {{ total_hours }}</div>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="weekly-summary mb-4">
+        <h4>Weekly Hours Summary</h4>
+        <div class="weekly-grid">
+            {% for monday, hours in weekly_hours.items() %}
+            <div class="week-box {% if hours < 40 %}under-hours{% elif hours > 40 %}over-hours{% endif %}">
+                <div class="week-date">Week of {{ monday.strftime('%B %d') }}</div>
+                <div class="week-hours">{{ hours }} hours</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% for month, shifts in shifts_by_month.items() %}
+    <div class="month-section mb-4">
+        <h3>{{ month }}</h3>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Shift</th>
+                        <th>Time</th>
+                        <th>Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shift in shifts %}
+                    <tr>
+                        <td>{{ shift.date.strftime('%B %d') }}</td>
+                        <td>{{ shift.date.strftime('%A') }}</td>
+                        <td>
+                            <span class="shift-badge shift-{{ shift.shift_type }}">
+                                {{ shift.shift_type }}
+                            </span>
+                        </td>
+                        <td>{{ shift.time_range }}</td>
+                        <td>{{ shift.duration_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="legend mt-4">
+        <h4>Shift Types</h4>
+        <div class="d-flex flex-wrap gap-3">
+            <div class="shift-badge shift-A">A Shift (6:00 AM - 2:00 PM)</div>
+            <div class="shift-badge shift-B">B Shift (4:00 PM - 12:00 AM)</div>
+            <div class="shift-badge shift-C">C Shift (12:00 AM - 8:00 AM)</div>
+            <div class="shift-badge shift-G1">G1 Shift (12:00 PM - 8:00 PM)</div>
+            <div class="shift-badge shift-G2">G2 Shift (9:00 AM - 5:00 PM)</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .caregiver-schedule {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header-section {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-group .dropdown-menu {
+        min-width: 200px;
+    }
+
+    .dropdown-item.active {
+        background-color: #e9ecef;
+        color: #000;
+    }
+
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .stats-box {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .total-hours {
+        font-size: 1.2em;
+        font-weight: bold;
+        padding: 10px 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .weekly-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .week-box {
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+
+    .week-box.under-hours {
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+    }
+
+    .week-box.over-hours {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+
+    .week-date {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .week-hours {
+        color: #666;
+    }
+
+    .shift-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .shift-A { background-color: #90EE90; }
+    .shift-B { background-color: #87CEEB; }
+    .shift-C { background-color: #DDA0DD; }
+    .shift-G1 { background-color: #F0E68C; }
+    .shift-G2 { background-color: #FFB6C1; }
+
+    .month-section {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+    }
+
+    @media print {
+        .btn-group,
+        .btn-outline-secondary,
+        .btn-primary {
+            display: none;
+        }
+
+        .header-section {
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .caregiver-schedule {
+            padding: 0;
+        }
+
+        .month-section {
+            box-shadow: none;
+            padding: 10px 0;
+        }
+
+        .table {
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %} 

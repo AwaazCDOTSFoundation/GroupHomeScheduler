@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Monthly Schedule</h2>
+    <div class="d-flex align-items-center">
+        <div class="dropdown me-3">
+            <button class="btn btn-info dropdown-toggle" type="button" id="caregiverDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                View Caregiver Schedule
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="caregiverDropdown">
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='Amanda') }}">Amanda</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='Fatima') }}">Fatima</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='Kisha') }}">Kisha</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='MB') }}">MB</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='MG') }}">MG</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='Michelle') }}">Michelle</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('views.caregiver_schedule', caregiver_name='Teontae') }}">Teontae</a></li>
+            </ul>
+        </div>
+        <button id="fillScheduleBtn" class="btn btn-success me-3">Fill April-May 2025</button>
+        <form method="GET" action="{{ url_for('views.monthly_view') }}" class="d-flex align-items-center">
+            <select name="month" class="form-select me-2" onchange="this.form.submit()">
+                {% for month in months %}
+                <option value="{{ month.value }}" {% if month.selected %}selected{% endif %}>
+                    {{ month.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <input type="number" name="year" value="{{ current_year }}" class="form-control me-2" style="width: 100px;" onchange="this.form.submit()">
+            <button type="submit" class="btn btn-primary">Go</button>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center">
+        <select class="form-select me-2" id="monthSelect" onchange="window.location.href='?month=' + this.value">
+            {% for month in months %}
+            <option value="{{ month.value }}" {% if month.selected %}selected{% endif %}>
+                {{ month.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="syncToCalendar()">
+            <i class="fas fa-sync me-1"></i> Sync to Google Calendar
+        </button>
+    </div>
+</div>
+
+<div class="schedule-container">
+    <table class="table table-bordered schedule-table">
+        <thead>
+            <tr>
+                <th class="date-header">Day</th>
+                {% for hour in range(24) %}
+                <th class="text-center">{{ '%02d'|format(hour) }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for date in dates %}
+            <tr>
+                <td class="date-cell">
+                    <div class="date-info">
+                        <span class="day-num">{{ date.strftime('%-d') }}</span>
+                        <span class="day-name">{{ date.strftime('%a') }}</span>
+                    </div>
+                </td>
+                {% for hour in range(24) %}
+                <td class="shift-cell">
+                    {% if date.date() >= schedule_start %}
+                        {% set shifts_in_hour = [] %}
+                        {% for shift in shifts %}
+                            {% if shift.date == date.date() %}
+                                {% if shift.start_hour <= hour %}
+                                    {% if shift.start_hour + shift.duration_hours <= 24 %}
+                                        {% if hour < shift.start_hour + shift.duration_hours %}
+                                            {% set _ = shifts_in_hour.append((shift.shift_type, shift.caregiver.name[:2].upper(), shift.time_range)) %}
+                                        {% endif %}
+                                    {% else %}
+                                        {% if hour < (shift.start_hour + shift.duration_hours - 24) or hour >= shift.start_hour %}
+                                            {% set _ = shifts_in_hour.append((shift.shift_type, shift.caregiver.name[:2].upper(), shift.time_range)) %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if shifts_in_hour %}
+                            <div class="shifts-container">
+                            {% for shift_type, initials, time_range in shifts_in_hour %}
+                                <div class="shift-{{ shift_type }}" title="{{ time_range }}">
+                                    {% if initials in ['KI', 'AM', 'MB', 'FA'] %}
+                                        <span class="bold-initials">{{ initials }}</span>
+                                    {% else %}
+                                        <span class="regular-initials">{{ initials }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="legend mt-4">
+    <div class="legend-item shift-A">A Shift (6:00 AM - 2:00 PM)</div>
+    <div class="legend-item shift-B">B Shift (4:00 PM - 12:00 AM)</div>
+    <div class="legend-item shift-C">C Shift (12:00 AM - 8:00 AM)</div>
+    <div class="legend-item shift-G1">G1 Shift (12:00 PM - 8:00 PM)</div>
+    <div class="legend-item shift-G2">G2 Shift (9:00 AM - 5:00 PM)</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('fillScheduleBtn').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/fill-schedule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Schedule filled successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error filling schedule: ' + error.message);
+    }
+});
+
+function syncToCalendar() {
+    if (!confirm('This will sync all shifts from April 7th to May 31st, 2025 to Google Calendar. Continue?')) {
+        return;
+    }
+    
+    fetch('/sync-to-calendar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Successfully synced shifts to Google Calendar!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error syncing to Google Calendar. Please check the console for details.');
+    });
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .schedule-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+    
+    .schedule-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    
+    .date-header {
+        width: 60px !important;
+        text-align: center !important;
+    }
+    
+    .date-cell {
+        width: 60px;
+        padding: 4px !important;
+        text-align: center;
+    }
+    
+    .date-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .day-num {
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+    
+    .day-name {
+        font-size: 0.8em;
+        color: #666;
+    }
+    
+    .shift-cell {
+        width: calc((100% - 60px) / 24);
+        height: 60px;
+        padding: 2px !important;
+        position: relative;
+    }
+    
+    .shifts-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        height: 100%;
+    }
+    
+    .shift-A, .shift-B, .shift-C, .shift-G1, .shift-G2 {
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9em;
+        padding: 2px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bold-initials {
+        font-weight: 700;
+        font-size: 1.1em;
+        text-shadow: 0px 0px 1px rgba(0,0,0,0.2);
+        letter-spacing: 0.5px;
+    }
+    
+    .regular-initials {
+        font-weight: normal;
+        font-size: 0.95em;
+    }
+    
+    .table th {
+        font-size: 0.8em;
+        padding: 4px 2px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    .shift-A { background-color: #90EE90; }
+    .shift-B { background-color: #87CEEB; }
+    .shift-C { background-color: #DDA0DD; }
+    .shift-G1 { background-color: #F0E68C; }
+    .shift-G2 { background-color: #FFB6C1; }
+    
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: white;
+    }
+    
+    .legend-item {
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+
+    @media (max-width: 1400px) {
+        .shift-cell {
+            min-width: 35px;
+        }
+    }
+</style>
+{% endblock %} 

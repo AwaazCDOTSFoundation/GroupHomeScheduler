@@ -31,4 +31,9 @@ class Shift(db.Model):
     
     @property
     def duration_hours(self):
-        return ShiftConfig.SHIFTS[self.shift_type]['duration'] 
+        return ShiftConfig.SHIFTS[self.shift_type]['duration']
+        
+    @property
+    def end_hour(self):
+        end = self.start_hour + self.duration_hours
+        return end if end < 24 else end - 24  # Handle overnight shifts 
