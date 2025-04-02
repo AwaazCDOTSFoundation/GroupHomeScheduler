@@ -88,13 +88,113 @@ def monthly_view():
         # For months other than April 2025, show all shifts
         if year != 2025 or month != 4:
             schedule_start = first_day
-            
+
+        # Check if we have any shifts for this period
         shifts = Shift.query.join(Caregiver).filter(
             Shift.date >= schedule_start.date(),
             Shift.date <= last_day.date()
         ).order_by(Shift.date, Shift.shift_type).all()
-        
-        logger.debug(f"Found {len(shifts)} shifts for the month")
+
+        # If no shifts exist and we're looking at April-May 2025, automatically fill the schedule
+        if not shifts and year == 2025 and month in [4, 5]:
+            try:
+                # Define the weekly pattern
+                weekly_pattern = {
+                    0: {  # Monday
+                        'A': 'MB',
+                        'G1': 'Teontae',
+                        'G2': 'MG',
+                        'B': 'Amanda',  # Will be skipped for 4/28
+                        'C': 'Michelle'
+                    },
+                    1: {  # Tuesday
+                        'A': 'Fatima',
+                        'G1': 'MG',
+                        'G2': 'Teontae',
+                        'B': 'Michelle',
+                        'C': 'Kisha'
+                    },
+                    2: {  # Wednesday
+                        'A': 'MB',
+                        'G1': 'MG',
+                        'G2': 'Teontae',
+                        'B': 'Kisha',
+                        'C': 'Amanda'  # Will be skipped for 4/30
+                    },
+                    3: {  # Thursday
+                        'A': 'Fatima',
+                        'G1': 'MB',
+                        'G2': 'Teontae',
+                        'B': 'Kisha',
+                        'C': 'Amanda'  # Will be skipped for 5/1
+                    },
+                    4: {  # Friday
+                        'A': 'MB',
+                        'G1': 'Kisha',
+                        'G2': 'Teontae',
+                        'B': 'Fatima',
+                        'C': 'Amanda'  # Will be skipped for 5/2
+                    },
+                    5: {  # Saturday
+                        'A': 'MG',
+                        'G2': 'Teontae',
+                        'G1': 'Fatima',
+                        'B': 'Kisha',
+                        'C': 'Michelle'
+                    },
+                    6: {  # Sunday
+                        'A': 'MG',
+                        'G2': 'Teontae',
+                        'G1': 'Michelle',
+                        'B': 'Fatima',
+                        'C': 'Amanda'
+                    }
+                }
+
+                # Get all caregivers
+                caregivers = {c.name: c.id for c in Caregiver.query.all()}
+                
+                # Delete existing shifts from April 7th onwards
+                Shift.query.filter(
+                    Shift.date >= schedule_start.date(),
+                    Shift.date <= datetime(2025, 5, 31).date()
+                ).delete()
+
+                # Create shifts for each day
+                current_date = schedule_start
+                end_date = datetime(2025, 5, 31)
+
+                while current_date <= end_date:
+                    # Get the day pattern based on weekday
+                    day_pattern = weekly_pattern[current_date.weekday()]
+                    
+                    for shift_type, caregiver_name in day_pattern.items():
+                        # Skip Amanda's shifts during her time off
+                        if (caregiver_name == 'Amanda' and 
+                            datetime(2025, 4, 28) <= current_date <= datetime(2025, 5, 2)):
+                            continue
+                        
+                        new_shift = Shift(
+                            date=current_date.date(),
+                            shift_type=shift_type,
+                            caregiver_id=caregivers[caregiver_name]
+                        )
+                        db.session.add(new_shift)
+                    
+                    current_date += timedelta(days=1)
+
+                db.session.commit()
+                logger.debug("Schedule automatically filled")
+
+                # Refresh shifts after filling
+                shifts = Shift.query.join(Caregiver).filter(
+                    Shift.date >= schedule_start.date(),
+                    Shift.date <= last_day.date()
+                ).order_by(Shift.date, Shift.shift_type).all()
+
+            except Exception as e:
+                logger.error(f"Error auto-filling schedule: {e}")
+                db.session.rollback()
         
         # Get all months for the dropdown
         months = []
@@ -106,17 +206,17 @@ def monthly_view():
                 'selected': i == month
             })
         
+        logger.debug(f"Found {len(shifts)} shifts for the month")
         return render_template('monthly.html', 
-                             dates=dates, 
+                             dates=dates,
                              shifts=shifts,
                              months=months,
-                             current_month=month,
                              current_year=year,
-                             schedule_start=schedule_start.date())  # Pass schedule_start to template
+                             schedule_start=schedule_start.date())
     except Exception as e:
         error_traceback = traceback.format_exc()
         logger.error(f"Error in monthly view: {e}\nTraceback:\n{error_traceback}")
-        return render_template('error.html', error=str(e)), 500
+        raise
 
 @views.route('/caregivers')
 def caregiver_view():
