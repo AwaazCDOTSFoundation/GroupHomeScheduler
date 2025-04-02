@@ -9,10 +9,95 @@ services:
       python -c "
       from app import create_app, db
       from app.models import Caregiver, Shift
+      from datetime import datetime, timedelta
+      
+      print('Starting database initialization...')
       app = create_app()
+      
       with app.app_context():
+          print('Dropping all tables...')
           db.drop_all()
+          print('Creating all tables...')
           db.create_all()
+          
+          print('Creating caregivers...')
+          caregivers = ['MB', 'Teontae', 'MG', 'Amanda', 'Michelle', 'Fatima', 'Kisha']
+          for name in caregivers:
+              caregiver = Caregiver(name=name)
+              db.session.add(caregiver)
+          db.session.commit()
+          
+          print('Creating shifts...')
+          weekly_pattern = {
+              0: {  # Monday
+                  'A': 'MB',
+                  'G1': 'Teontae',
+                  'G2': 'MG',
+                  'B': 'Amanda',
+                  'C': 'Michelle'
+              },
+              1: {  # Tuesday
+                  'A': 'Fatima',
+                  'G1': 'MG',
+                  'G2': 'Teontae',
+                  'B': 'Michelle',
+                  'C': 'Kisha'
+              },
+              2: {  # Wednesday
+                  'A': 'MB',
+                  'G1': 'MG',
+                  'G2': 'Teontae',
+                  'B': 'Kisha',
+                  'C': 'Amanda'
+              },
+              3: {  # Thursday
+                  'A': 'Fatima',
+                  'G1': 'MB',
+                  'G2': 'Teontae',
+                  'B': 'Kisha',
+                  'C': 'Amanda'
+              },
+              4: {  # Friday
+                  'A': 'MB',
+                  'G1': 'Kisha',
+                  'G2': 'Teontae',
+                  'B': 'Fatima',
+                  'C': 'Amanda'
+              },
+              5: {  # Saturday
+                  'A': 'MG',
+                  'G2': 'Teontae',
+                  'G1': 'Fatima',
+                  'B': 'Kisha',
+                  'C': 'Michelle'
+              },
+              6: {  # Sunday
+                  'A': 'MG',
+                  'G2': 'Teontae',
+                  'G1': 'Michelle',
+                  'B': 'Fatima',
+                  'C': 'Amanda'
+              }
+          }
+          
+          caregivers = {c.name: c.id for c in Caregiver.query.all()}
+          current_date = datetime(2025, 4, 7)
+          end_date = datetime(2025, 5, 31)
+          
+          while current_date <= end_date:
+              day_pattern = weekly_pattern[current_date.weekday()]
+              for shift_type, caregiver_name in day_pattern.items():
+                  if not (caregiver_name == 'Amanda' and datetime(2025, 4, 28) <= current_date <= datetime(2025, 5, 2)):
+                      shift = Shift(
+                          date=current_date.date(),
+                          shift_type=shift_type,
+                          caregiver_id=caregivers[caregiver_name]
+                      )
+                      db.session.add(shift)
+              current_date += timedelta(days=1)
+          
+          db.session.commit()
+          print('Database initialization complete!')
       " && gunicorn wsgi:app
     envVars:
       - key: DATABASE_URL
