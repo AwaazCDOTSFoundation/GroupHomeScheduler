@@ -1,13 +1,13 @@
 import os
 import sys
 import logging
+from datetime import datetime, timedelta
 
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app, db
 from app.models import Caregiver, Shift
-from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 app = create_app()
 
-# Create tables and initialize data if they don't exist
-with app.app_context():
+def initialize_database():
+    """Initialize database with caregivers and shifts."""
     try:
         logger.debug("Creating database tables...")
         db.create_all()
@@ -124,7 +124,12 @@ with app.app_context():
             
     except Exception as e:
         logger.error(f"Error during database initialization: {str(e)}")
+        db.session.rollback()
         raise
+
+# Initialize database on startup
+with app.app_context():
+    initialize_database()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
