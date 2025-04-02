@@ -5,7 +5,7 @@ services:
     region: ohio
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python wsgi.py
+    startCommand: python init_db.py && python wsgi.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
