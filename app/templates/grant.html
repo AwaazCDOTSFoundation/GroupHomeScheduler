@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-table th, .schedule-table td {
+        border: 1px solid #ddd;
+        padding: 15px;
+    }
+    .day-header {
+        background-color: #333;
+        color: white;
+        font-weight: 500;
+        width: 100px;
+    }
+    .timeline-cell {
+        position: relative;
+        height: 60px;
+        padding: 10px !important;
+    }
+    .shift-block {
+        position: absolute;
+        height: 40px;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .shift-block:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        z-index: 10;
+    }
+    .shift-A {
+        background-color: #4CAF50;
+        color: white;
+        left: 25%;
+        width: 33.33%;
+    }
+    .shift-B {
+        background-color: #2196F3;
+        color: white;
+        left: 66.67%;
+        width: 33.33%;
+    }
+    .shift-C {
+        background-color: #9C27B0;
+        color: white;
+        left: 0;
+        width: 33.33%;
+    }
+    .shift-G1 {
+        background-color: #FF9800;
+        color: white;
+        left: 50%;
+        width: 33.33%;
+    }
+    .shift-G2 {
+        background-color: #F44336;
+        color: white;
+        left: 37.5%;
+        width: 33.33%;
+    }
+    .shift-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .shift-type {
+        font-weight: bold;
+        min-width: 28px;
+        padding: 2px 4px;
+        background-color: rgba(255,255,255,0.2);
+        border-radius: 4px;
+        text-align: center;
+    }
+    .time-markers {
+        position: absolute;
+        top: -20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8em;
+        color: #666;
+    }
+    .caregiver-Amanda { color: #ffcdd2; font-weight: 600; }
+    .caregiver-Kisha { color: #bbdefb; font-weight: 600; }
+    .caregiver-Fatima { color: #c8e6c9; font-weight: 600; }
+    .caregiver-MariaB { color: #e1bee7; font-weight: 600; }
+    .caregiver-MariahG { color: #b2dfdb; font-weight: 600; }
+    .caregiver-Michelle { color: #c5cae9; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Weekly Timeline View</h1>
+
+    <div class="shift-header">
+        <h3>Shift Times:</h3>
+        <div class="shift-type-label">A Shift (6AM-2PM)</div>
+        <div class="shift-type-label">G2 Shift (9AM-5PM)</div>
+        <div class="shift-type-label">G1 Shift (12PM-8PM)</div>
+        <div class="shift-type-label">B Shift (4PM-12AM)</div>
+        <div class="shift-type-label">C Shift (12AM-8AM)</div>
+    </div>
+
+    <table class="schedule-table">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th style="width: 100%">
+                    <div class="time-markers">
+                        <span>12 AM</span>
+                        <span>4 AM</span>
+                        <span>8 AM</span>
+                        <span>12 PM</span>
+                        <span>4 PM</span>
+                        <span>8 PM</span>
+                        <span>12 AM</span>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for date in dates %}
+            <tr>
+                <td class="day-header">{{ date.strftime('%A') }}</td>
+                <td class="timeline-cell">
+                    {% set shift_times = {
+                        'C': {'start': 0, 'width': 33.33},
+                        'A': {'start': 25, 'width': 33.33},
+                        'G2': {'start': 37.5, 'width': 33.33},
+                        'G1': {'start': 50, 'width': 33.33},
+                        'B': {'start': 66.67, 'width': 33.33}
+                    } %}
+                    
+                    {% for shift_type, times in shift_times.items() %}
+                        {% for shift in shifts %}
+                            {% if shift.date == date.date() and shift.shift_type == shift_type %}
+                                <div class="shift-block shift-{{ shift_type }}" 
+                                     style="left: {{ times.start }}%; width: {{ times.width }}%">
+                                    <div class="shift-info">
+                                        <span class="shift-type">{{ shift_type }}</span>
+                                        <span class="caregiver-name caregiver-{{ shift.caregiver.name|replace(' ', '') }}">
+                                            {{ shift.caregiver.name }}
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

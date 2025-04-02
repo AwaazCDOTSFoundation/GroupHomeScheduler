@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .hourly-grid {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-size: 0.9em;
+    }
+    .hourly-grid th, .hourly-grid td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+        position: relative;
+    }
+    .hourly-grid th {
+        background-color: #333;
+        color: white;
+        text-align: center;
+        font-weight: 500;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .time-slot {
+        font-weight: 500;
+        background-color: #f8f9fa;
+        width: 120px;
+        white-space: nowrap;
+        position: sticky;
+        left: 0;
+        z-index: 5;
+    }
+    .shift-entry {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 2px 0;
+    }
+    .shift-type {
+        font-weight: bold;
+        min-width: 20px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: white;
+        text-align: center;
+    }
+    .shift-A { background-color: #4CAF50; }
+    .shift-B { background-color: #2196F3; }
+    .shift-C { background-color: #9C27B0; }
+    .shift-G1 { background-color: #FF9800; }
+    .shift-G2 { background-color: #F44336; }
+    
+    .caregiver-name {
+        font-size: 0.95em;
+    }
+    .caregiver-Amanda { color: #d32f2f; }
+    .caregiver-Kisha { color: #1976d2; }
+    .caregiver-Fatima { color: #388e3c; }
+    .caregiver-MariaB { color: #7b1fa2; }
+    .caregiver-MariahG { color: #00796b; }
+    .caregiver-Michelle { color: #283593; }
+
+    .shift-header {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .shift-type-label {
+        padding: 6px 12px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Hourly Schedule</h1>
+
+<div class="shift-header">
+    <h3>Shift Times:</h3>
+    <div class="shift-type-label">A Shift (6AM-2PM)</div>
+    <div class="shift-type-label">G2 Shift (9AM-5PM)</div>
+    <div class="shift-type-label">G1 Shift (12PM-8PM)</div>
+    <div class="shift-type-label">B Shift (4PM-12AM)</div>
+    <div class="shift-type-label">C Shift (12AM-8AM)</div>
+</div>
+
+<table class="hourly-grid">
+    <thead>
+        <tr>
+            <th>Time</th>
+            {% for date in dates %}
+            <th>{{ date.strftime('%A') }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for hour in range(24) %}
+            <tr>
+                <td class="time-slot">
+                    {% if hour == 0 %}
+                        12:00 AM - 1:00 AM
+                    {% elif hour < 12 %}
+                        {{ hour }}:00 AM - {{ hour + 1 }}:00 AM
+                    {% elif hour == 12 %}
+                        12:00 PM - 1:00 PM
+                    {% else %}
+                        {{ hour - 12 }}:00 PM - {{ hour - 11 }}:00 PM
+                    {% endif %}
+                </td>
+                {% for date in dates %}
+                <td>
+                    {% for shift in shifts %}
+                        {% if shift.date == date.date() %}
+                            {% if (shift.shift_type == 'A' and hour >= 6 and hour < 14) or
+                                  (shift.shift_type == 'G2' and hour >= 9 and hour < 17) or
+                                  (shift.shift_type == 'G1' and hour >= 12 and hour < 20) or
+                                  (shift.shift_type == 'B' and hour >= 16 and hour < 24) or
+                                  (shift.shift_type == 'C' and hour >= 0 and hour < 8) %}
+                                <div class="shift-entry">
+                                    <span class="shift-type shift-{{ shift.shift_type }}">{{ shift.shift_type }}</span>
+                                    <span class="caregiver-name caregiver-{{ shift.caregiver.name|replace(' ', '') }}">
+                                        {{ shift.caregiver.name }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 
