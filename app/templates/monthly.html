@@ -3,6 +3,14 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Monthly Schedule</h2>
+    <div class="legend d-flex flex-wrap gap-3 align-items-center">
+        <div class="legend-item shift-A">A (6AM-2PM)</div>
+        <div class="legend-item shift-B">B (4PM-12AM)</div>
+        <div class="legend-item shift-C">C (12AM-8AM)</div>
+        <div class="legend-item shift-G1">G1 (12PM-8PM)</div>
+        <div class="legend-item shift-G2">G2 (9AM-5PM)</div>
+        <div class="legend-item time-off-example">Time Off - may need replacement</div>
+    </div>
     <div class="d-flex align-items-center">
         <div class="dropdown me-3">
             <button class="btn btn-info dropdown-toggle" type="button" id="caregiverDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -48,6 +56,20 @@
             <i class="fas fa-sync me-1"></i> Sync to Google Calendar
         </button>
     </div>
+    <a href="{{ url_for('views.printable_schedule') }}" class="btn btn-secondary">
+        <i class="fas fa-print"></i> Printable View
+    </a>
+</div>
+
+<div class="schedule-controls">
+    <form action="{{ url_for('views.refresh_monthly') }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-secondary">
+            <i class="fas fa-sync-alt"></i> Refresh Schedule
+        </button>
+    </form>
+    <button onclick="regenerateSchedule()" class="btn btn-warning ms-2">
+        <i class="fas fa-redo"></i> Regenerate Schedule
+    </button>
 </div>
 
 <div class="schedule-container">
@@ -78,11 +100,23 @@
                                 {% if shift.start_hour <= hour %}
                                     {% if shift.start_hour + shift.duration_hours <= 24 %}
                                         {% if hour < shift.start_hour + shift.duration_hours %}
-                                            {% set _ = shifts_in_hour.append((shift.shift_type, shift.caregiver.name[:2].upper(), shift.time_range)) %}
+                                            {% set is_time_off = shift.caregiver.name in TIME_OFF and date.date() in TIME_OFF[shift.caregiver.name] %}
+                                            {% set _ = shifts_in_hour.append((
+                                                shift.shift_type, 
+                                                shift.caregiver.name[:2].upper(), 
+                                                shift.time_range,
+                                                is_time_off
+                                            )) %}
                                         {% endif %}
                                     {% else %}
                                         {% if hour < (shift.start_hour + shift.duration_hours - 24) or hour >= shift.start_hour %}
-                                            {% set _ = shifts_in_hour.append((shift.shift_type, shift.caregiver.name[:2].upper(), shift.time_range)) %}
+                                            {% set is_time_off = shift.caregiver.name in TIME_OFF and date.date() in TIME_OFF[shift.caregiver.name] %}
+                                            {% set _ = shifts_in_hour.append((
+                                                shift.shift_type, 
+                                                shift.caregiver.name[:2].upper(), 
+                                                shift.time_range,
+                                                is_time_off
+                                            )) %}
                                         {% endif %}
                                     {% endif %}
                                 {% endif %}
@@ -91,12 +125,16 @@
                         
                         {% if shifts_in_hour %}
                             <div class="shifts-container">
-                            {% for shift_type, initials, time_range in shifts_in_hour %}
-                                <div class="shift-{{ shift_type }}" title="{{ time_range }}">
+                            {% for shift_type, initials, time_range, is_time_off in shifts_in_hour %}
+                                <div class="shift-{{ shift_type }} {% if is_time_off %}time-off{% endif %}" 
+                                     title="{{ time_range }}{% if is_time_off %} - Time Off{% endif %}">
                                     {% if initials in ['KI', 'AM', 'MB', 'FA'] %}
                                         <span class="bold-initials">{{ initials }}</span>
                                     {% else %}
                                         <span class="regular-initials">{{ initials }}</span>
+                                    {% endif %}
+                                    {% if is_time_off %}
+                                    <span class="time-off-indicator">*</span>
                                     {% endif %}
                                 </div>
                             {% endfor %}
@@ -111,13 +149,54 @@
     </table>
 </div>
 
-<div class="legend mt-4">
-    <div class="legend-item shift-A">A Shift (6:00 AM - 2:00 PM)</div>
-    <div class="legend-item shift-B">B Shift (4:00 PM - 12:00 AM)</div>
-    <div class="legend-item shift-C">C Shift (12:00 AM - 8:00 AM)</div>
-    <div class="legend-item shift-G1">G1 Shift (12:00 PM - 8:00 PM)</div>
-    <div class="legend-item shift-G2">G2 Shift (9:00 AM - 5:00 PM)</div>
+<div class="caregiver-legend mb-4">
+    <h5>Caregivers & Their Regular Shifts:</h5>
+    <div class="d-flex flex-wrap gap-3">
+        <div class="caregiver-item">
+            <span class="bold-initials">AM</span> - Amanda
+            <span class="caregiver-shifts">
+                (Mon: B, Wed/Thu/Fri/Sun: C)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="bold-initials">FA</span> - Fatima
+            <span class="caregiver-shifts">
+                (Tue/Thu: A, Fri: B, Sat: G1, Sun: B)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="bold-initials">KI</span> - Kisha
+            <span class="caregiver-shifts">
+                (Wed/Thu: B, Fri: G1, Sat: B)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="bold-initials">MB</span> - Maria
+            <span class="caregiver-shifts">
+                (Mon/Wed/Fri: A, Thu: G2)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="regular-initials">MG</span> - Maggie
+            <span class="caregiver-shifts">
+                (Mon: G2, Tue/Wed: G1, Sat/Sun: A)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="regular-initials">MI</span> - Michelle
+            <span class="caregiver-shifts">
+                (Mon: C, Tue: B, Sat: C, Sun: G1)
+            </span>
+        </div>
+        <div class="caregiver-item">
+            <span class="regular-initials">TE</span> - Teontae
+            <span class="caregiver-shifts">
+                (Mon/Thu: G1, Fri/Sat/Sun: G2)
+            </span>
+        </div>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -166,6 +245,32 @@ function syncToCalendar() {
     .catch(error => {
         console.error('Error:', error);
         alert('Error syncing to Google Calendar. Please check the console for details.');
+    });
+}
+
+function regenerateSchedule() {
+    if (!confirm('This will delete and regenerate all shifts from April 7th to May 31st, 2025. Continue?')) {
+        return;
+    }
+    
+    fetch('/regenerate-schedule', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error regenerating schedule. Please check the console for details.');
     });
 }
 </script>
@@ -261,25 +366,69 @@ function syncToCalendar() {
     .shift-G2 { background-color: #FFB6C1; }
     
     .legend {
-        display: flex;
-        flex-wrap: wrap;
         gap: 10px;
-        padding: 15px;
+        padding: 8px 15px;
         border: 1px solid #ddd;
         border-radius: 8px;
         background-color: white;
+        margin-left: auto;
+        margin-right: 20px;
     }
     
     .legend-item {
-        padding: 8px 15px;
+        padding: 4px 10px;
         border-radius: 4px;
         font-size: 0.9em;
+        white-space: nowrap;
     }
 
     @media (max-width: 1400px) {
         .shift-cell {
             min-width: 35px;
         }
+    }
+
+    .caregiver-legend {
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: white;
+    }
+    
+    .caregiver-item {
+        font-size: 0.9em;
+        padding: 8px 12px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background-color: #f8f9fa;
+        flex: 1;
+        min-width: 300px;
+    }
+    
+    .caregiver-shifts {
+        font-size: 0.85em;
+        color: #666;
+        margin-left: auto;
+    }
+
+    .time-off {
+        background-color: #fff !important;
+        border: 2px dashed #ff0000;
+        color: #ff0000;
+    }
+    
+    .time-off-indicator {
+        color: #ff0000;
+        font-weight: bold;
+        margin-left: 2px;
+    }
+
+    .legend-item.time-off-example {
+        border: 2px dashed #ff0000;
+        color: #ff0000;
+        background-color: #fff;
     }
 </style>
 {% endblock %} 

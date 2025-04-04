@@ -216,3 +216,10 @@ def sync_shifts_to_calendar(shifts, calendar_id='primary'):
     except Exception as e:
         logger.error(f"Error syncing to Google Calendar: {str(e)}")
         raise 
+
+def clear_calendar_cache():
+    """Clear any cached calendar data"""
+    # If using Flask-Caching
+    if cache:
+        cache.delete('monthly_schedule')
+        cache.delete('weekly_schedule') 

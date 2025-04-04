@@ -1,12 +1,13 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file
 from datetime import datetime, timedelta
 from dateutil.rrule import rrule, DAILY
-from .models import Caregiver, Shift, db
-from .config import ShiftConfig
+from .models import Caregiver, Shift, db, Schedule, TimeOff
+from .config import ShiftConfig, TimeOffConfig
 from .google_calendar import sync_shifts_to_calendar
 import logging
 import traceback
 from googleapiclient.discovery import build
+from .utils import get_shift, CAREGIVER_COLORS, CAREGIVER_ORDER, update_config_file
 
 logger = logging.getLogger(__name__)
 views = Blueprint('views', __name__)
@@ -98,59 +99,6 @@ def monthly_view():
         # If no shifts exist and we're looking at April-May 2025, automatically fill the schedule
         if not shifts and year == 2025 and month in [4, 5]:
             try:
-                # Define the weekly pattern
-                weekly_pattern = {
-                    0: {  # Monday
-                        'A': 'MB',
-                        'G1': 'Teontae',
-                        'G2': 'MG',
-                        'B': 'Amanda',  # Will be skipped for 4/28
-                        'C': 'Michelle'
-                    },
-                    1: {  # Tuesday
-                        'A': 'Fatima',
-                        'G1': 'MG',
-                        'G2': 'Teontae',
-                        'B': 'Michelle',
-                        'C': 'Kisha'
-                    },
-                    2: {  # Wednesday
-                        'A': 'MB',
-                        'G1': 'MG',
-                        'G2': 'Teontae',
-                        'B': 'Kisha',
-                        'C': 'Amanda'  # Will be skipped for 4/30
-                    },
-                    3: {  # Thursday
-                        'A': 'Fatima',
-                        'G1': 'MB',
-                        'G2': 'Teontae',
-                        'B': 'Kisha',
-                        'C': 'Amanda'  # Will be skipped for 5/1
-                    },
-                    4: {  # Friday
-                        'A': 'MB',
-                        'G1': 'Kisha',
-                        'G2': 'Teontae',
-                        'B': 'Fatima',
-                        'C': 'Amanda'  # Will be skipped for 5/2
-                    },
-                    5: {  # Saturday
-                        'A': 'MG',
-                        'G2': 'Teontae',
-                        'G1': 'Fatima',
-                        'B': 'Kisha',
-                        'C': 'Michelle'
-                    },
-                    6: {  # Sunday
-                        'A': 'MG',
-                        'G2': 'Teontae',
-                        'G1': 'Michelle',
-                        'B': 'Fatima',
-                        'C': 'Amanda'
-                    }
-                }
-
                 # Get all caregivers
                 caregivers = {c.name: c.id for c in Caregiver.query.all()}
                 
@@ -166,9 +114,13 @@ def monthly_view():
 
                 while current_date <= end_date:
                     # Get the day pattern based on weekday
-                    day_pattern = weekly_pattern[current_date.weekday()]
+                    day_pattern = ShiftConfig.WEEKLY_PATTERN[current_date.weekday()]
                     
                     for shift_type, caregiver_name in day_pattern.items():
+                        # Skip if no caregiver assigned (None)
+                        if caregiver_name is None:
+                            continue
+                        
                         # Skip Amanda's shifts during her time off
                         if (caregiver_name == 'Amanda' and 
                             datetime(2025, 4, 28) <= current_date <= datetime(2025, 5, 2)):
@@ -206,12 +158,16 @@ def monthly_view():
                 'selected': i == month
             })
         
+        # Get time off from database instead of config
+        time_off_schedule = TimeOff.get_all_time_off()
+        
         logger.debug(f"Found {len(shifts)} shifts for the month")
         return render_template('monthly.html', 
                              dates=dates,
                              shifts=shifts,
                              months=months,
                              current_year=year,
+                             TIME_OFF=time_off_schedule,
                              schedule_start=schedule_start.date())
     except Exception as e:
         error_traceback = traceback.format_exc()
@@ -288,7 +244,10 @@ def add_shift():
         
         db.session.add(new_shift)
         db.session.commit()
-        logger.debug("Successfully added new shift")
+        
+        # Update config file with new pattern
+        new_pattern = Shift.update_config_pattern()
+        update_config_file(new_pattern)
         
         return jsonify({'message': 'Shift added successfully'})
         
@@ -312,7 +271,10 @@ def remove_shift():
             
         db.session.delete(shift)
         db.session.commit()
-        logger.debug(f"Successfully removed shift with ID {shift_id}")
+        
+        # Update config file with new pattern
+        new_pattern = Shift.update_config_pattern()
+        update_config_file(new_pattern)
         
         return jsonify({'message': 'Shift removed successfully'})
         
@@ -490,58 +452,8 @@ def generate_shifts_for_date_range(start_date, end_date):
 def fill_schedule():
     try:
         logger.debug("Starting schedule fill operation")
-        # Define the weekly pattern from the image
-        weekly_pattern = {
-            0: {  # Monday
-                'A': 'MB',
-                'G1': 'Teontae',
-                'G2': 'MG',
-                'B': 'Amanda',  # Will be skipped for 4/28
-                'C': 'Michelle'
-            },
-            1: {  # Tuesday
-                'A': 'Fatima',
-                'G1': 'MG',
-                'G2': 'Teontae',
-                'B': 'Michelle',
-                'C': 'Kisha'
-            },
-            2: {  # Wednesday
-                'A': 'MB',
-                'G1': 'MG',
-                'G2': 'Teontae',
-                'B': 'Kisha',
-                'C': 'Amanda'  # Will be skipped for 4/30
-            },
-            3: {  # Thursday
-                'A': 'Fatima',
-                'G1': 'MB',
-                'G2': 'Teontae',
-                'B': 'Kisha',
-                'C': 'Amanda'  # Will be skipped for 5/1
-            },
-            4: {  # Friday
-                'A': 'MB',
-                'G1': 'Kisha',
-                'G2': 'Teontae',
-                'B': 'Fatima',
-                'C': 'Amanda'  # Will be skipped for 5/2
-            },
-            5: {  # Saturday
-                'A': 'MG',
-                'G2': 'Teontae',
-                'G1': 'Fatima',
-                'B': 'Kisha',
-                'C': 'Michelle'
-            },
-            6: {  # Sunday
-                'A': 'MG',
-                'G2': 'Teontae',
-                'G1': 'Michelle',
-                'B': 'Fatima',
-                'C': 'Amanda'
-            }
-        }
+        # Use the pattern from config
+        weekly_pattern = ShiftConfig.WEEKLY_PATTERN
 
         # Get all caregivers to map names to IDs
         caregivers = {c.name: c.id for c in Caregiver.query.all()}
@@ -568,6 +480,10 @@ def fill_schedule():
                 logger.debug(f"Creating shifts for {current_date.date()}, pattern: {day_pattern}")
                 
                 for shift_type, caregiver_name in day_pattern.items():
+                    # Skip if no caregiver assigned (None)
+                    if caregiver_name is None:
+                        continue
+                    
                     # Skip Amanda's shifts during her time off
                     if (caregiver_name == 'Amanda' and 
                         datetime(2025, 4, 28) <= current_date <= datetime(2025, 5, 2)):
@@ -758,4 +674,169 @@ def sync_to_calendar():
         return jsonify({
             'success': False,
             'message': f'Error syncing to Google Calendar: {error_msg}'
+        }), 500
+
+@views.route('/refresh-monthly', methods=['POST'])
+def refresh_monthly():
+    """Force refresh of monthly schedule view"""
+    success = Schedule.refresh_monthly_data()
+    if success:
+        flash('Monthly schedule data refreshed successfully', 'success')
+    else:
+        flash('Error refreshing monthly schedule data', 'error')
+    return redirect(url_for('views.monthly_view'))
+
+@views.route('/regenerate-schedule', methods=['POST'])
+def regenerate_schedule():
+    try:
+        # Clear existing schedule
+        start_date = datetime(2025, 4, 7).date()
+        end_date = datetime(2025, 5, 31).date()
+        deleted = Shift.clear_schedule(start_date, end_date)
+        
+        # Regenerate schedule
+        response = fill_schedule()
+        
+        if response.status_code == 200:
+            return jsonify({
+                'success': True,
+                'message': f'Schedule regenerated. Deleted {deleted} old shifts.'
+            })
+        else:
+            return response
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error regenerating schedule: {str(e)}'
+        }), 500
+
+@views.route('/printable-schedule')
+def printable_schedule():
+    """Display printable schedule view with hourly breakdown"""
+    try:
+        # Fixed date range: April 7-20, 2025
+        start_date = datetime(2025, 4, 7).date()
+        dates = [(datetime(2025, 4, 7) + timedelta(days=i)).date() for i in range(14)]
+
+        # Get shifts for the week
+        shifts = Shift.query.join(Caregiver).filter(
+            Shift.date >= dates[0],
+            Shift.date <= dates[-1]
+        ).order_by(Shift.date, Shift.shift_type).all()
+
+        # For Excel download
+        if request.args.get('format') == 'excel':
+            return generate_excel_schedule(shifts, dates)
+            
+        # Get time off from database
+        time_off_schedule = TimeOff.get_all_time_off()
+        
+        return render_template('printable_schedule.html',
+                             shifts=shifts,
+                             dates=dates,
+                             caregiver_colors=CAREGIVER_COLORS,
+                             caregiver_order=CAREGIVER_ORDER,
+                             get_shift=get_shift,
+                             TIME_OFF=time_off_schedule,
+                             shift_config=ShiftConfig.SHIFTS)
+    except Exception as e:
+        logger.error(f"Error generating printable schedule: {e}")
+        flash('Error generating schedule', 'error')
+        return redirect(url_for('views.monthly_view'))
+
+def generate_excel_schedule(shifts, dates):
+    """Generate Excel file of the schedule"""
+    import xlsxwriter
+    from io import BytesIO
+    
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet()
+    
+    # Add headers and formatting
+    header_format = workbook.add_format({
+        'bold': True,
+        'align': 'center',
+        'bg_color': '#D3D3D3'
+    })
+    
+    # Write headers
+    worksheet.write(0, 0, 'Time', header_format)
+    for i, date in enumerate(dates):
+        worksheet.write(0, i+1, date.strftime('%A (%m/%d)'), header_format)
+    
+    # Write time slots
+    for hour in range(24):
+        row = hour + 1
+        time_str = f"{hour:02d}:00"
+        worksheet.write(row, 0, time_str)
+    
+    workbook.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='schedule.xlsx'
+    )
+
+@views.route('/api/time-off', methods=['POST'])
+def add_time_off():
+    try:
+        data = request.get_json()
+        caregiver_id = data.get('caregiver_id')
+        start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d').date()
+        end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d').date()
+        reason = data.get('reason')
+        
+        time_off = TimeOff(
+            caregiver_id=caregiver_id,
+            start_date=start_date,
+            end_date=end_date,
+            reason=reason
+        )
+        db.session.add(time_off)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Time off added successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@views.route('/api/time-off/<int:time_off_id>', methods=['DELETE'])
+def delete_time_off(time_off_id):
+    try:
+        time_off = TimeOff.query.get_or_404(time_off_id)
+        db.session.delete(time_off)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Time off deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@views.route('/api/sync-config', methods=['POST'])
+def sync_config():
+    try:
+        # Get the current pattern from the database
+        new_pattern = Shift.update_config_pattern()
+        
+        # Update the config file
+        if update_config_file(new_pattern):
+            return jsonify({
+                'success': True,
+                'message': 'Config file updated successfully',
+                'pattern': new_pattern
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to update config file'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
         }), 500

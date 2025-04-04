@@ -252,6 +252,31 @@ function showAlert(type, message) {
     
     setTimeout(() => alertDiv.remove(), 3000);
 }
+
+function syncConfig() {
+    if (!confirm('This will update the config file with the current schedule pattern. Continue?')) {
+        return;
+    }
+    
+    fetch('/api/sync-config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Config file updated successfully');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error syncing config');
+    });
+}
 </script>
 {% endblock %}
 
@@ -330,5 +355,9 @@ function showAlert(type, message) {
         <span class="shift-G1">G1 Shift (12PM-8PM)</span>
         <span class="shift-G2">G2 Shift (9AM-5PM)</span>
     </div>
+
+    <button onclick="syncConfig()" class="btn btn-secondary">
+        <i class="fas fa-sync"></i> Sync to Config
+    </button>
 </div>
 {% endblock %} 

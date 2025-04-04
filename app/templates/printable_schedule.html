@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>RESIDENTIAL CARE HOME DIRECT CARE STAFF SCHEDULE</h2>
+    <div>
+        <a href="{{ url_for('views.printable_schedule', format='excel') }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Download Excel
+        </a>
+        <button onclick="window.print()" class="btn btn-primary ms-2">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+</div>
+
+<div class="facility-info text-center mb-4">
+    <h4>FACILITY: AUTISM ASHRAM AWAAZ (LEVEL 6)</h4>
+    <p>CAPACITY: ___</p>
+</div>
+
+<div class="shift-legend mb-4">
+    <div class="d-flex justify-content-center gap-4">
+        <div class="legend-item shift-A">A (6AM-2PM)</div>
+        <div class="legend-item shift-B">B (4PM-12AM)</div>
+        <div class="legend-item shift-C">C (12AM-8AM)</div>
+        <div class="legend-item shift-G1">G1 (12PM-8PM)</div>
+        <div class="legend-item shift-G2">G2 (9AM-5PM)</div>
+        <div class="legend-item time-off-example">Time Off - may need replacement</div>
+    </div>
+</div>
+
+<!-- New Daily Schedule Table -->
+<div class="daily-schedule mb-5">
+    <h5>DAILY SCHEDULE: <span class="text-muted">{{ dates[0].strftime('%b %-d') }} - {{ dates[-1].strftime('%b %-d') }}</span></h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Date</th>
+                {% for caregiver in caregiver_order %}
+                <th>{{ caregiver }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for date in dates %}
+            <tr>
+                <td class="date-cell">
+                    <strong>{{ date.strftime('%a') }}</strong><br>
+                    {{ date.strftime('%-d') }}
+                </td>
+                {% for caregiver in caregiver_order %}
+                <td>
+                    {% with shift = get_shift(shifts, date, caregiver) %}
+                    {% if shift %}
+                        <div class="shift-{{ shift.shift_type }} {% if shift.time_off %}time-off{% endif %}">
+                            {{ shift.shift_type }}<br>
+                            {% if shift.shift_type == 'A' %}
+                            6AM-2PM
+                            {% elif shift.shift_type == 'B' %}
+                            4PM-12AM
+                            {% elif shift.shift_type == 'C' %}
+                            12AM-8AM
+                            {% elif shift.shift_type == 'G1' %}
+                            12PM-8PM
+                            {% elif shift.shift_type == 'G2' %}
+                            9AM-5PM
+                            {% endif %}
+                            {% if shift.time_off %}
+                            <span class="time-off-indicator">*</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Original Visual Schedule -->
+<div class="visual-schedule mb-4">
+    <h5>HOURLY BREAKDOWN</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Time</th>
+                {% for date in dates %}
+                <th>{{ date.strftime('%A (%m/%d)') }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for hour in range(24) %}
+            <tr>
+                <td>{{ '%02d:00'|format(hour) }}</td>
+                {% for date in dates %}
+                <td class="schedule-cell">
+                    {% for shift in shifts %}
+                        {% if shift.date == date and shift.start_hour <= hour and hour < shift.start_hour + shift.duration_hours %}
+                            {% set is_time_off = shift.caregiver.name in TIME_OFF and date in TIME_OFF[shift.caregiver.name] %}
+                            <div class="shift-{{ shift.shift_type }}
+                                {% if is_time_off %}time-off{% endif %}"
+                                title="{{ shift.caregiver.name }}{% if is_time_off %} - Time Off{% endif %}">
+                                {{ shift.caregiver.name }}
+                                {% if is_time_off %}
+                                <span class="time-off-indicator">*</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .shift-legend {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+        background-color: white;
+    }
+
+    .legend-item {
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+
+    .schedule-cell {
+        height: 30px;
+        padding: 2px !important;
+    }
+
+    /* Shift colors matching existing scheme */
+    .shift-A { background-color: #90EE90; }
+    .shift-B { background-color: #87CEEB; }
+    .shift-C { background-color: #DDA0DD; }
+    .shift-G1 { background-color: #F0E68C; }
+    .shift-G2 { background-color: #FFB6C1; }
+
+    .time-off {
+        background-color: #fff !important;
+        border: 2px dashed #ff0000;
+        color: #ff0000;
+    }
+    
+    .time-off-indicator {
+        color: #ff0000;
+        font-weight: bold;
+    }
+
+    .legend-item.time-off-example {
+        border: 2px dashed #ff0000;
+        color: #ff0000;
+        background-color: #fff;
+    }
+
+    .date-cell {
+        text-align: center;
+        font-size: 0.9em;
+    }
+
+    /* Print-specific styles */
+    @media print {
+        @page {
+            size: landscape;
+        }
+        body {
+            font-size: 12px;
+        }
+        .btn {
+            display: none;
+        }
+        .shift-legend {
+            border: none;
+            margin-bottom: 20px;
+        }
+        .daily-schedule, .visual-schedule {
+            page-break-inside: avoid;
+        }
+    }
+
+    /* Daily Schedule specific styles */
+    .daily-schedule td {
+        vertical-align: middle;
+        text-align: center;
+        padding: 8px !important;
+    }
+
+    .daily-schedule .shift-A,
+    .daily-schedule .shift-B,
+    .daily-schedule .shift-C,
+    .daily-schedule .shift-G1,
+    .daily-schedule .shift-G2 {
+        padding: 4px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %} 
