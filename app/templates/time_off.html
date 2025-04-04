@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Time Off Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Time Off Management</h2>
+    
+    <!-- Time Off Request Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Request Time Off</h4>
+        </div>
+        <div class="card-body">
+            <form id="timeOffForm">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="caregiver">Caregiver</label>
+                            <select class="form-control" id="caregiver" required>
+                                {% for caregiver in caregivers %}
+                                <option value="{{ caregiver.id }}">{{ caregiver.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select class="form-control" id="category" required>
+                                <option value="vacation">Vacation</option>
+                                <option value="sick">Sick Leave</option>
+                                <option value="personal">Personal</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="startDate">Start Date</label>
+                            <input type="date" class="form-control" id="startDate" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="endDate">End Date</label>
+                            <input type="date" class="form-control" id="endDate" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="reason">Reason</label>
+                    <textarea class="form-control" id="reason" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Time Off Calendar -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Time Off Calendar</h4>
+        </div>
+        <div class="card-body">
+            <div id="timeOffCalendar"></div>
+        </div>
+    </div>
+
+    <!-- Time Off Requests Table -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Time Off Requests</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Caregiver</th>
+                        <th>Category</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                        <th>Reason</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="timeOffTableBody">
+                    {% for request in time_off_requests %}
+                    <tr>
+                        <td>{{ request.caregiver.name }}</td>
+                        <td>{{ request.category }}</td>
+                        <td>{{ request.start_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ request.end_date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if request.status == 'approved' else 'warning' if request.status == 'pending' else 'danger' }}">
+                                {{ request.status }}
+                            </span>
+                        </td>
+                        <td>{{ request.reason }}</td>
+                        <td>
+                            {% if request.status == 'pending' %}
+                            <button class="btn btn-sm btn-success approve-btn" data-id="{{ request.id }}">Approve</button>
+                            <button class="btn btn-sm btn-danger reject-btn" data-id="{{ request.id }}">Reject</button>
+                            {% endif %}
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="{{ request.id }}" onclick="deleteTimeOff({{ request.id }})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+<style>
+    .fc-event {
+        cursor: pointer;
+    }
+    .time-off-vacation { background-color: #90EE90; }
+    .time-off-sick { background-color: #FFB6C1; }
+    .time-off-personal { background-color: #87CEEB; }
+    .time-off-other { background-color: #DDA0DD; }
+    .delete-btn { margin-left: 5px; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize calendar
+    var calendarEl = document.getElementById('timeOffCalendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: [
+            {% for request in time_off_requests %}
+            {
+                title: '{{ request.caregiver.name }} - {{ request.category }}',
+                start: '{{ request.start_date.strftime("%Y-%m-%d") }}',
+                end: '{{ request.end_date.strftime("%Y-%m-%d") }}',
+                className: 'time-off-{{ request.category }}',
+                extendedProps: {
+                    status: '{{ request.status }}',
+                    reason: '{{ request.reason }}'
+                }
+            },
+            {% endfor %}
+        ],
+        eventClick: function(info) {
+            alert('Status: ' + info.event.extendedProps.status + '\nReason: ' + info.event.extendedProps.reason);
+        }
+    });
+    calendar.render();
+
+    // Handle form submission
+    document.getElementById('timeOffForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const data = {
+            caregiver_id: document.getElementById('caregiver').value,
+            category: document.getElementById('category').value,
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value,
+            reason: document.getElementById('reason').value
+        };
+
+        fetch('/api/time-off', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    });
+
+    // Handle approve/reject buttons
+    document.querySelectorAll('.approve-btn, .reject-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.classList.contains('approve-btn') ? 'approve' : 'reject';
+            const id = this.dataset.id;
+
+            fetch(`/api/time-off/${id}/${action}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        });
+    });
+});
+
+// Handle delete time off
+function deleteTimeOff(id) {
+    if (confirm('Are you sure you want to delete this time off request?')) {
+        fetch(`/api/time-off/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

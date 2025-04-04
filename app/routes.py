@@ -712,6 +712,18 @@ def generate_excel_schedule(shifts, dates):
         download_name='schedule.xlsx'
     )
 
+@views.route('/time-off')
+def time_off_management():
+    try:
+        caregivers = Caregiver.query.all()
+        time_off_requests = TimeOff.query.order_by(TimeOff.created_at.desc()).all()
+        return render_template('time_off.html', 
+                            caregivers=caregivers,
+                            time_off_requests=time_off_requests)
+    except Exception as e:
+        logger.error(f"Error in time off management: {e}")
+        return render_template('error.html', error=str(e)), 500
+
 @views.route('/api/time-off', methods=['POST'])
 def add_time_off():
     try:
@@ -720,17 +732,52 @@ def add_time_off():
         start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d').date()
         end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d').date()
         reason = data.get('reason')
+        category = data.get('category', 'vacation')
+        
+        # Check for conflicts
+        existing_time_off = TimeOff.query.filter(
+            TimeOff.caregiver_id == caregiver_id,
+            TimeOff.status == 'approved',
+            (
+                (TimeOff.start_date <= end_date) & 
+                (TimeOff.end_date >= start_date)
+            )
+        ).first()
+        
+        if existing_time_off:
+            return jsonify({
+                'success': False, 
+                'message': f'Conflict with existing time off from {existing_time_off.start_date} to {existing_time_off.end_date}'
+            }), 400
         
         time_off = TimeOff(
             caregiver_id=caregiver_id,
             start_date=start_date,
             end_date=end_date,
-            reason=reason
+            reason=reason,
+            category=category,
+            status='pending'
         )
         db.session.add(time_off)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Time off added successfully'})
+        return jsonify({'success': True, 'message': 'Time off request submitted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@views.route('/api/time-off/<int:time_off_id>/<action>', methods=['POST'])
+def update_time_off_status(time_off_id, action):
+    try:
+        if action not in ['approve', 'reject']:
+            return jsonify({'success': False, 'message': 'Invalid action'}), 400
+            
+        time_off = TimeOff.query.get_or_404(time_off_id)
+        time_off.status = 'approved' if action == 'approve' else 'rejected'
+        time_off.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Time off request {action}d successfully'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500

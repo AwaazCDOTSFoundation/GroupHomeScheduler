@@ -60,6 +60,10 @@ class TimeOff(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     reason = db.Column(db.String(200))
+    category = db.Column(db.String(50), nullable=False, default='vacation')  # vacation, sick, personal, etc.
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     caregiver = db.relationship('Caregiver', backref='time_off')
     
@@ -82,7 +86,7 @@ class TimeOff(db.Model):
         return time_off_dict
 
     def __repr__(self):
-        return f'<TimeOff {self.caregiver.name} {self.start_date} to {self.end_date}>'
+        return f'<TimeOff {self.caregiver.name} {self.start_date} to {self.end_date} ({self.status})>'
 
 def initialize_time_off():
     """Initialize time off data from config if database is empty"""
