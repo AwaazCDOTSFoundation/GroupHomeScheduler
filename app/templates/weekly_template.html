@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Weekly Template</h1>
+
+    <!-- Shift Legend -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Shift Times</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-success">A Shift (6AM-2PM)</span>
+                <span class="badge bg-danger">G2 Shift (9AM-5PM)</span>
+                <span class="badge bg-warning text-dark">G1 Shift (12PM-8PM)</span>
+                <span class="badge bg-info">B Shift (4PM-12AM)</span>
+                <span class="badge bg-purple">C Shift (12AM-8AM)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid View -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Grid View</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>A Shift</th>
+                            <th>G2 Shift</th>
+                            <th>G1 Shift</th>
+                            <th>B Shift</th>
+                            <th>C Shift</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day_num in range(7) %}
+                        <tr>
+                            <td class="fw-bold">{{ days[day_num] }}</td>
+                            <td class="bg-success-light">
+                                {% if weekly_pattern[day_num] and weekly_pattern[day_num].get('A') %}
+                                {{ weekly_pattern[day_num]['A'] }}
+                                {% endif %}
+                            </td>
+                            <td class="bg-danger-light">
+                                {% if weekly_pattern[day_num] and weekly_pattern[day_num].get('G2') %}
+                                {{ weekly_pattern[day_num]['G2'] }}
+                                {% endif %}
+                            </td>
+                            <td class="bg-warning-light">
+                                {% if weekly_pattern[day_num] and weekly_pattern[day_num].get('G1') %}
+                                {{ weekly_pattern[day_num]['G1'] }}
+                                {% endif %}
+                            </td>
+                            <td class="bg-info-light">
+                                {% if weekly_pattern[day_num] and weekly_pattern[day_num].get('B') %}
+                                {{ weekly_pattern[day_num]['B'] }}
+                                {% endif %}
+                            </td>
+                            <td class="bg-purple-light">
+                                {% if weekly_pattern[day_num] and weekly_pattern[day_num].get('C') %}
+                                {{ weekly_pattern[day_num]['C'] }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline View -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Timeline View</h5>
+        </div>
+        <div class="card-body">
+            <div class="timeline-container">
+                {% for day_num in range(7) %}
+                <div class="timeline-row">
+                    <div class="timeline-label">{{ days[day_num] }}</div>
+                    <div class="timeline-bars">
+                        {% if weekly_pattern[day_num] %}
+                            {% if weekly_pattern[day_num].get('C') %}
+                            <div class="timeline-bar bg-purple" style="left: 0%; width: 33.33%">
+                                C: {{ weekly_pattern[day_num]['C'] }}
+                            </div>
+                            {% endif %}
+                            {% if weekly_pattern[day_num].get('A') %}
+                            <div class="timeline-bar bg-success" style="left: 25%; width: 33.33%">
+                                A: {{ weekly_pattern[day_num]['A'] }}
+                            </div>
+                            {% endif %}
+                            {% if weekly_pattern[day_num].get('G2') %}
+                            <div class="timeline-bar bg-danger" style="left: 37.5%; width: 33.33%">
+                                G2: {{ weekly_pattern[day_num]['G2'] }}
+                            </div>
+                            {% endif %}
+                            {% if weekly_pattern[day_num].get('G1') %}
+                            <div class="timeline-bar bg-warning" style="left: 50%; width: 33.33%">
+                                G1: {{ weekly_pattern[day_num]['G1'] }}
+                            </div>
+                            {% endif %}
+                            {% if weekly_pattern[day_num].get('B') %}
+                            <div class="timeline-bar bg-info" style="left: 66.67%; width: 33.33%">
+                                B: {{ weekly_pattern[day_num]['B'] }}
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Hourly Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Hourly Breakdown</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            {% for day in days %}
+                            <th>{{ day }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hour in range(24) %}
+                        <tr>
+                            <td>{{ '%02d:00'|format(hour) }}</td>
+                            {% for day_num in range(7) %}
+                            <td>
+                                {% if weekly_pattern[day_num] %}
+                                    {% for shift_type, shift_info in shift_config.items() %}
+                                        {% if weekly_pattern[day_num].get(shift_type) and 
+                                              hour >= shift_info['start_hour'] and 
+                                              hour < shift_info['start_hour'] + shift_info['duration'] %}
+                                            <span class="badge {% if shift_type == 'A' %}bg-success
+                                                             {% elif shift_type == 'G2' %}bg-danger
+                                                             {% elif shift_type == 'G1' %}bg-warning
+                                                             {% elif shift_type == 'B' %}bg-info
+                                                             {% else %}bg-purple{% endif %}">
+                                                {{ shift_type }}: {{ weekly_pattern[day_num][shift_type] }}
+                                            </span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-purple {
+    background-color: #6f42c1;
+    color: white;
+}
+.bg-purple-light {
+    background-color: rgba(111, 66, 193, 0.1);
+}
+.bg-success-light {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+.bg-danger-light {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+.bg-info-light {
+    background-color: rgba(23, 162, 184, 0.1);
+}
+.timeline-container {
+    position: relative;
+    padding: 1rem 0;
+}
+.timeline-row {
+    display: flex;
+    margin-bottom: 1rem;
+    height: 40px;
+    align-items: center;
+}
+.timeline-label {
+    width: 100px;
+    font-weight: bold;
+}
+.timeline-bars {
+    position: relative;
+    flex-grow: 1;
+    height: 30px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+.timeline-bar {
+    position: absolute;
+    height: 100%;
+    padding: 0.25rem;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+</style>
+{% endblock %} 

@@ -178,3 +178,27 @@ def remove_shift():
         logger.error(f"Error removing shift: {e}\nTraceback:\n{error_traceback}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@views.route('/weekly-template')
+def weekly_template():
+    try:
+        logger.debug("Processing weekly template view request")
+        
+        # Get the weekly pattern from ShiftConfig
+        weekly_pattern = ShiftConfig.WEEKLY_PATTERN
+        shift_config = ShiftConfig.SHIFTS
+        
+        logger.debug(f"Weekly pattern: {weekly_pattern}")
+        logger.debug(f"Shift config: {shift_config}")
+        
+        # Create day names
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        
+        return render_template('weekly_template.html', 
+                             weekly_pattern=weekly_pattern,
+                             shift_config=shift_config,
+                             days=days)
+    except Exception as e:
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error in weekly template view: {e}\nTraceback:\n{error_traceback}")
+        raise

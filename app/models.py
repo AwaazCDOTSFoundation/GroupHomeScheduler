@@ -15,113 +15,74 @@ class Caregiver(db.Model):
     name = db.Column(db.String(100), nullable=False)
     shifts = db.relationship('Shift', backref='caregiver', lazy=True)
 
+    def __repr__(self):
+        return f'<Caregiver {self.name}>'
+
 class Shift(db.Model):
     __tablename__ = 'shift'
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    shift_type = db.Column(db.String(3), nullable=False)  # A, B, C, G1, or G2
+    shift_type = db.Column(db.String(10), nullable=False)  # A, B, C, G1, G2
     caregiver_id = db.Column(db.Integer, db.ForeignKey('caregiver.id'), nullable=False)
-
-    @property
-    def time_range(self):
-        return ShiftConfig.SHIFTS[self.shift_type]['time']
     
     @property
     def start_hour(self):
-        return ShiftConfig.SHIFTS[self.shift_type]['start_hour']
+        shift_hours = {
+            'A': 6,   # 6 AM
+            'B': 16,  # 4 PM
+            'C': 0,   # 12 AM
+            'G1': 12, # 12 PM
+            'G2': 9   # 9 AM
+        }
+        return shift_hours.get(self.shift_type, 0)
+    
+    @property
+    def end_hour(self):
+        return (self.start_hour + 8) % 24
     
     @property
     def duration_hours(self):
-        return ShiftConfig.SHIFTS[self.shift_type]['duration']
-        
+        return 8
+    
     @property
-    def end_hour(self):
-        end = self.start_hour + self.duration_hours
-        return end if end < 24 else end - 24  # Handle overnight shifts 
+    def time_range(self):
+        start = f"{self.start_hour:02d}:00"
+        end = f"{self.end_hour:02d}:00"
+        return f"{start}-{end}"
 
-    @classmethod
-    def clear_schedule(cls, start_date, end_date):
-        """Clear all shifts between start_date and end_date"""
-        try:
-            deleted = cls.query.filter(
-                cls.date >= start_date,
-                cls.date <= end_date
-            ).delete()
-            db.session.commit()
-            return deleted
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error clearing schedule: {e}")
-            return 0
-
-    @classmethod
-    def update_config_pattern(cls):
-        """Update ShiftConfig.WEEKLY_PATTERN based on current schedule"""
-        # Get a week's worth of shifts
-        start_date = datetime(2025, 4, 7)  # Use a reference week
-        end_date = start_date + timedelta(days=6)
-        
-        shifts = cls.query.filter(
-            cls.date >= start_date,
-            cls.date <= end_date
-        ).join(Caregiver).all()
-        
-        new_pattern = {i: {} for i in range(7)}  # 0-6 for Monday-Sunday
-        
-        for shift in shifts:
-            weekday = shift.date.weekday()
-            new_pattern[weekday][shift.shift_type] = shift.caregiver.name
-            
-        return new_pattern
-
-class Schedule(db.Model):
-    __tablename__ = 'schedule'
-    id = db.Column(db.Integer, primary_key=True)
-    last_updated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    @classmethod
-    def refresh_monthly_data(cls):
-        """Force refresh of monthly schedule data"""
-        try:
-            # Clear any cached data
-            db.session.commit()
-            # Signal any listeners that data has changed
-            db.session.expire_all()
-            # Update last_updated timestamp
-            schedule = cls.query.first()
-            if not schedule:
-                schedule = cls()
-            schedule.last_updated = datetime.utcnow()
-            db.session.add(schedule)
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error refreshing monthly data: {e}")
-            return False 
+    def __repr__(self):
+        return f'<Shift {self.date} {self.shift_type} {self.caregiver.name}>'
 
 class TimeOff(db.Model):
     __tablename__ = 'time_off'
     id = db.Column(db.Integer, primary_key=True)
-    caregiver_id = db.Column(db.Integer, db.ForeignKey('caregiver.id'))
+    caregiver_id = db.Column(db.Integer, db.ForeignKey('caregiver.id'), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     reason = db.Column(db.String(200))
-
-    @classmethod
-    def get_all_time_off(cls):
-        """Get all time off entries grouped by caregiver name"""
-        time_offs = cls.query.join(Caregiver).all()
-        result = {}
-        for time_off in time_offs:
-            if time_off.caregiver.name not in result:
-                result[time_off.caregiver.name] = []
-            # Add all dates between start_date and end_date
-            current_date = time_off.start_date
-            while current_date <= time_off.end_date:
-                result[time_off.caregiver.name].append(current_date)
+    
+    caregiver = db.relationship('Caregiver', backref='time_off')
+    
+    @staticmethod
+    def get_all_time_off():
+        """Get all time off records grouped by caregiver"""
+        time_off_records = TimeOff.query.all()
+        time_off_dict = {}
+        
+        for record in time_off_records:
+            if record.caregiver.name not in time_off_dict:
+                time_off_dict[record.caregiver.name] = []
+            
+            # Add all dates in the range
+            current_date = record.start_date
+            while current_date <= record.end_date:
+                time_off_dict[record.caregiver.name].append(current_date)
                 current_date += timedelta(days=1)
-        return result 
+        
+        return time_off_dict
+
+    def __repr__(self):
+        return f'<TimeOff {self.caregiver.name} {self.start_date} to {self.end_date}>'
 
 def initialize_time_off():
     """Initialize time off data from config if database is empty"""

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Admin View</h1>
+
+    <!-- Tabs for different sections -->
+    <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">
+                <i class="fas fa-users-cog"></i> Manage Caregivers
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab">
+                <i class="fas fa-calendar-check"></i> Caregiver Schedules
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content" id="adminTabContent">
+        <!-- Manage Caregivers Tab -->
+        <div class="tab-pane fade show active" id="manage" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Manage Caregivers</h5>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCaregiverModal">
+                        <i class="fas fa-plus"></i> Add Caregiver
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for caregiver in caregivers %}
+                                <tr>
+                                    <td>{{ caregiver.id }}</td>
+                                    <td>{{ caregiver.name }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="editCaregiver({{ caregiver.id }}, '{{ caregiver.name }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteCaregiver({{ caregiver.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caregiver Schedules Tab -->
+        <div class="tab-pane fade" id="schedule" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Caregiver Schedules</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for caregiver in caregivers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">{{ caregiver.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">Current Week's Schedule</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Shift</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for date in week_dates %}
+                                                <tr>
+                                                    <td>{{ date.strftime('%a, %b %d') }}</td>
+                                                    <td>
+                                                        {% for shift in shifts %}
+                                                            {% if shift.caregiver_id == caregiver.id and shift.date == date.date() %}
+                                                                <span class="badge shift-{{ shift.shift_type }}">{{ shift.shift_type }}</span>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <a href="{{ url_for('views.caregiver_schedule', caregiver_name=caregiver.name) }}" class="btn btn-outline-primary btn-sm mt-2">
+                                        <i class="fas fa-calendar"></i> View Full Schedule
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Caregiver Modal -->
+<div class="modal fade" id="addCaregiverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Caregiver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCaregiverForm">
+                    <div class="mb-3">
+                        <label for="caregiverName" class="form-label">Caregiver Name</label>
+                        <input type="text" class="form-control" id="caregiverName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addCaregiver()">Add Caregiver</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Caregiver Modal -->
+<div class="modal fade" id="editCaregiverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Caregiver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCaregiverForm">
+                    <input type="hidden" id="editCaregiverId">
+                    <div class="mb-3">
+                        <label for="editCaregiverName" class="form-label">Caregiver Name</label>
+                        <input type="text" class="form-control" id="editCaregiverName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateCaregiver()">Update Caregiver</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function addCaregiver() {
+    const name = document.getElementById('caregiverName').value;
+    fetch('/api/caregivers', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function editCaregiver(id, name) {
+    document.getElementById('editCaregiverId').value = id;
+    document.getElementById('editCaregiverName').value = name;
+    new bootstrap.Modal(document.getElementById('editCaregiverModal')).show();
+}
+
+function updateCaregiver() {
+    const id = document.getElementById('editCaregiverId').value;
+    const name = document.getElementById('editCaregiverName').value;
+    fetch(`/api/caregivers/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function deleteCaregiver(id) {
+    if (confirm('Are you sure you want to delete this caregiver?')) {
+        fetch(`/api/caregivers/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
+{% endblock %} 

@@ -38,75 +38,73 @@ class ShiftConfig:
     }
     
     WEEKLY_PATTERN = {
-        0: {  # Monday
-            'C': 'Michelle',
-            'A': 'MB',
-            'G1': 'Teontae',
-            'B': 'Amanda'
-        },
-        1: {  # Tuesday
-            'C': 'Kisha',
-            'A': 'Fatima',
-            'G1': 'MG',
-            'B': 'Michelle'
-        },
-        2: {  # Wednesday
-            'C': 'Amanda',
-            'A': 'MB',
-            'G1': 'MG',
-            'B': 'Kisha'
-        },
-        3: {  # Thursday
-            'C': 'Amanda',
-            'A': 'Fatima',
-            'G2': 'MB',
-            'G1': 'Teontae',
-            'B': 'Kisha'
-        },
-        4: {  # Friday
-            'C': 'Amanda',
-            'A': 'MB',
-            'G2': 'Teontae',
-            'G1': 'Kisha',
-            'B': 'Fatima'
-        },
-        5: {  # Saturday
-            'C': 'Michelle',
-            'A': 'MG',
-            'G1': 'Fatima',
-            'B': 'Kisha'
-        },
-        6: {  # Sunday
-            'C': 'Amanda',
-            'A': 'MG',
-            'G2': 'Teontae',
-            'G1': 'Michelle',
-            'B': 'Fatima'
-        }
-    }
+    0: {  # Monday
+        'C': 'Michelle',
+        'A': 'MB',
+        'G1': 'Teontae',
+        'B': 'Amanda',
+    },
+    1: {  # Tuesday
+        'C': 'Kisha',
+        'A': 'Fatima',
+        'G1': 'MG',
+        'B': 'Michelle',
+    },
+    2: {  # Wednesday
+        'C': 'Amanda',
+        'A': 'MB',
+        'G1': 'MG',
+        'B': 'Kisha',
+    },
+    3: {  # Thursday
+        'C': 'Amanda',
+        'A': 'Fatima',
+        'G2': 'MB',
+        'G1': 'Teontae',
+        'B': 'Kisha',
+    },
+    4: {  # Friday
+        'C': 'Amanda',
+        'A': 'MB',
+        'G2': 'Teontae',
+        'G1': 'Kisha',
+        'B': 'Fatima',
+    },
+    5: {  # Saturday
+        'C': 'Michelle',
+        'A': 'MG',
+        'G1': 'Fatima',
+        'B': 'Kisha',
+    },
+    6: {  # Sunday
+        'C': 'Amanda',
+        'A': 'MG',
+        'G2': 'Teontae',
+        'G1': 'Michelle',
+        'B': 'Fatima',
+    },
+}
     
     CAREGIVERS = ['CG1', 'CG2', 'CG3', 'CG4', 'CG5', 'CG6', 'CG7', 'CG8']
     SHIFTS_PER_WEEK = 5  # Each caregiver works 5 days
     HOURS_PER_SHIFT = 8  # Each shift is 8 hours
-    HOURS_PER_WEEK = 40  # Total weekly hours per caregiver 
+    HOURS_PER_WEEK = 40  # Total weekly hours per caregiver
 
 class TimeOffConfig:
-    SCHEDULE = {
+                                                            SCHEDULE = {
         'Michelle': [
             datetime(2025, 4, 13).date(),
             datetime(2025, 4, 19).date(),
-            datetime(2025, 4, 20).date()
+            datetime(2025, 4, 20).date(),
         ],
         'Amanda': [
             datetime(2025, 4, 28).date(),
             datetime(2025, 4, 29).date(),
             datetime(2025, 4, 30).date(),
             datetime(2025, 5, 1).date(),
-            datetime(2025, 5, 2).date()
+            datetime(2025, 5, 2).date(),
         ],
-        'Teontae': [
-            # All Saturdays in April-May 2025
-           
-        ]
-        # Add other caregivers' time off here
+        'Kisha': [
+            datetime(2025, 4, 12).date(),
+        ],
     } 

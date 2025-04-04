@@ -1,7 +1,8 @@
 import os
 from app import create_app, db
-from app.models import Caregiver, Shift
+from app.models import Caregiver, Shift, TimeOff
 from app.config import ShiftConfig
+from app.utils import ensure_sync
 import logging
 
 # Configure logging
@@ -26,7 +27,14 @@ def initialize_database():
                 db.session.add(caregiver)
             db.session.commit()
             logger.debug(f"Added {len(ShiftConfig.CAREGIVERS)} caregivers")
+            
+        # Ensure database and config are in sync
+        logger.debug("Syncing database and config...")
+        if ensure_sync():
+            logger.debug("Successfully synced database and config")
+        else:
+            logger.error("Failed to sync database and config")
 
 if __name__ == '__main__':
     initialize_database()
-    app.run(debug=True) 
+    app.run(debug=True, port=5001) 

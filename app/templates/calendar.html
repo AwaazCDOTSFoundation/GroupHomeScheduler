@@ -2,88 +2,250 @@
 
 {% block extra_css %}
 <style>
-    .calendar {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-        background-color: #fff;
+    .calendar-container {
+        margin: 20px 0;
     }
-    .calendar th, .calendar td {
-        border: 1px solid #ddd;
-        padding: 12px;
-        text-align: center;
-        vertical-align: top;
+    .daily-schedule {
+        margin-bottom: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
     }
-    .calendar th {
-        background-color: #f8f9fa;
+    .schedule-header {
+        background-color: #4a90e2;
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-size: 20px;
         font-weight: bold;
     }
-    .day-header {
-        background-color: #333;
-        color: white;
+    .schedule-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .schedule-grid th,
+    .schedule-grid td {
+        border: 1px solid #dee2e6;
         padding: 10px;
-        text-align: left;
-        font-size: 1.1em;
     }
-    .shift-cell {
-        min-height: 60px;
+    .schedule-grid th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        text-align: center;
     }
-    .caregiver-name {
-        display: inline-block;
-        margin: 2px;
-        padding: 4px 8px;
+    .schedule-grid td {
+        vertical-align: top;
+        min-width: 120px;
+    }
+    .date-cell {
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    .shift-block {
+        margin: 4px 0;
+        padding: 8px;
         border-radius: 4px;
+        font-size: 0.9em;
     }
-    .shift-A { background-color: #90EE90; }
-    .shift-B { background-color: #87CEEB; }
-    .shift-C { background-color: #DDA0DD; }
-    .shift-G1 { background-color: #F0E68C; }
-    .shift-G2 { background-color: #FFB6C1; }
+    .shift-A { 
+        background-color: #98FB98;
+    }
+    .shift-B { 
+        background-color: #87CEEB;
+    }
+    .shift-C { 
+        background-color: #DDA0DD;
+    }
+    .shift-G1 { 
+        background-color: #F0E68C;
+    }
+    .shift-G2 { 
+        background-color: #FFB6C1;
+    }
+    .time-off {
+        border: 2px dashed #dc3545;
+        background-color: transparent;
+    }
+    .hourly-schedule {
+        margin-top: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .hourly-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .hourly-grid th,
+    .hourly-grid td {
+        border: 1px solid #dee2e6;
+        padding: 6px;
+        text-align: center;
+        font-size: 0.85em;
+    }
+    .hourly-grid th {
+        background-color: #f8f9fa;
+    }
+    .time-cell {
+        font-weight: bold;
+        width: 80px;
+        background-color: #f8f9fa;
+    }
+    .caregiver-cell {
+        padding: 4px;
+    }
+    .caregiver-cell.shift-A { background-color: #98FB98; }
+    .caregiver-cell.shift-B { background-color: #87CEEB; }
+    .caregiver-cell.shift-C { background-color: #DDA0DD; }
+    .caregiver-cell.shift-G1 { background-color: #F0E68C; }
+    .caregiver-cell.shift-G2 { background-color: #FFB6C1; }
+    .legend {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .time-off-hourly {
+        background-color: #ffebee;
+        border: 2px dashed #dc3545;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        color: #dc3545;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>Weekly Schedule</h1>
+<div class="container-fluid">
+    <h1 class="mb-4">Schedule Calendar</h1>
 
-<div class="legend">
-    <h3>Shift Times:</h3>
-    <span class="legend-item shift-A">A Shift (6AM-2PM)</span>
-    <span class="legend-item shift-G2">G2 Shift (9AM-5PM)</span>
-    <span class="legend-item shift-G1">G1 Shift (12PM-8PM)</span>
-    <span class="legend-item shift-B">B Shift (4PM-12AM)</span>
-    <span class="legend-item shift-C">C Shift (12AM-8AM)</span>
-</div>
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item shift-A">A Shift (6AM-2PM)</div>
+        <div class="legend-item shift-B">B Shift (4PM-12AM)</div>
+        <div class="legend-item shift-C">C Shift (12AM-8AM)</div>
+        <div class="legend-item shift-G1">G1 Shift (12PM-8PM)</div>
+        <div class="legend-item shift-G2">G2 Shift (9AM-5PM)</div>
+    </div>
 
-<table class="calendar">
-    <thead>
-        <tr>
-            <th>Day</th>
-            <th>A Shift</th>
-            <th>G2 Shift</th>
-            <th>G1 Shift</th>
-            <th>B Shift</th>
-            <th>C Shift</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for day in range(7) %}
-        <tr>
-            <td class="day-header">
-                {{ dates[day].strftime('%A') }}
-            </td>
-            {% for shift_type in ['A', 'G2', 'G1', 'B', 'C'] %}
-            <td class="shift-cell">
-                {% for shift in shifts %}
-                    {% if shift.date == dates[day].date() and shift.shift_type == shift_type %}
-                        <div class="caregiver-name shift-{{ shift_type }}">
-                            {{ shift.caregiver.name }}
-                        </div>
+    <!-- Daily Schedule -->
+    <div class="daily-schedule">
+        <div class="schedule-header">
+            DAILY SCHEDULE: Apr 7 - Apr 20
+        </div>
+        <table class="schedule-grid">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Kisha</th>
+                    <th>Maria B.</th>
+                    <th>MG</th>
+                    <th>Amanda</th>
+                    <th>Michelle</th>
+                    <th>Teontae</th>
+                    <th>Fatima</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for date, day_data in schedule.items() %}
+                    {% if date >= start_date and date <= end_date %}
+                        <tr>
+                            <td class="date-cell">
+                                {{ date.strftime('%a') }}<br>
+                                {{ date.strftime('%-d') }}
+                            </td>
+                            {% for caregiver in ['Kisha', 'Maria B.', 'MG', 'Amanda', 'Michelle', 'Teontae', 'Fatima'] %}
+                                <td>
+                                    {% for shift_type, assigned_caregiver in day_data.shifts.items() %}
+                                        {% if assigned_caregiver == caregiver %}
+                                            <div class="shift-block shift-{{ shift_type }}">
+                                                {{ shift_type }}<br>
+                                                {% if shift_type == 'A' %}6AM-2PM
+                                                {% elif shift_type == 'B' %}4PM-12AM
+                                                {% elif shift_type == 'C' %}12AM-8AM
+                                                {% elif shift_type == 'G1' %}12PM-8PM
+                                                {% elif shift_type == 'G2' %}9AM-5PM
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if caregiver in day_data.time_off %}
+                                        <div class="shift-block time-off">Time Off</div>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
                     {% endif %}
                 {% endfor %}
-            </td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Hourly Schedule -->
+    <div class="hourly-schedule">
+        <div class="schedule-header">
+            HOURLY SCHEDULE: Apr 7 - Apr 20
+        </div>
+        <table class="hourly-grid">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    {% for date, day_data in schedule.items() %}
+                        {% if date >= start_date and date <= end_date %}
+                            <th>{{ date.strftime('%A') }}<br>({{ date.strftime('%m/%d') }})</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in range(24) %}
+                    <tr>
+                        <td class="time-cell">{{ '%02d:00'|format(hour) }}</td>
+                        {% for date, day_data in schedule.items() %}
+                            {% if date >= start_date and date <= end_date %}
+                                <td>
+                                    {% for shift_type, caregiver in day_data.shifts.items() %}
+                                        {% set shift_start = {
+                                            'A': 6, 'B': 16, 'C': 0,
+                                            'G1': 12, 'G2': 9
+                                        } %}
+                                        {% set shift_end = {
+                                            'A': 14, 'B': 24, 'C': 8,
+                                            'G1': 20, 'G2': 17
+                                        } %}
+                                        {% if hour >= shift_start[shift_type] and hour < shift_end[shift_type] %}
+                                            {% if caregiver in day_data.time_off %}
+                                                <div class="caregiver-cell shift-{{ shift_type }} time-off-hourly">
+                                                    {{ caregiver }} (Time Off)
+                                                </div>
+                                            {% else %}
+                                                <div class="caregiver-cell shift-{{ shift_type }}">
+                                                    {{ caregiver }}
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %} 
