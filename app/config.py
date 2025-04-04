@@ -91,7 +91,7 @@ class ShiftConfig:
     HOURS_PER_WEEK = 40  # Total weekly hours per caregiver
 
 class TimeOffConfig:
-                                                                                                                SCHEDULE = {
+                                                                                                                                                                                    SCHEDULE = {
         'Michelle': [
             datetime(2025, 4, 13).date(),
             datetime(2025, 4, 19).date(),
@@ -103,8 +103,5 @@ class TimeOffConfig:
             datetime(2025, 4, 30).date(),
             datetime(2025, 5, 1).date(),
             datetime(2025, 5, 2).date(),
-        ],
-        'Kisha': [
-            datetime(2025, 4, 12).date(),
         ],
     } 

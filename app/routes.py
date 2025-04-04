@@ -7,7 +7,7 @@ from .google_calendar import sync_shifts_to_calendar
 import logging
 import traceback
 from googleapiclient.discovery import build
-from .utils import get_shift, CAREGIVER_COLORS, CAREGIVER_ORDER, update_config_file, sync_db_to_config, sync_config_to_db, ensure_sync
+from .utils import get_shift, CAREGIVER_COLORS, CAREGIVER_ORDER, update_config_file, sync_db_to_config, sync_config_to_db, ensure_sync, sync_time_off_to_config
 
 logger = logging.getLogger(__name__)
 views = Blueprint('views', __name__)
@@ -788,6 +788,12 @@ def delete_time_off(time_off_id):
         time_off = TimeOff.query.get_or_404(time_off_id)
         db.session.delete(time_off)
         db.session.commit()
+        
+        # Sync the changes to config file
+        if not sync_time_off_to_config():
+            logger.error("Failed to sync time off to config after deletion")
+            return jsonify({'success': False, 'message': 'Failed to sync changes to config file'}), 500
+            
         return jsonify({'success': True, 'message': 'Time off deleted successfully'})
     except Exception as e:
         db.session.rollback()
