@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 def get_shift(shifts, date, caregiver_name):
     """Helper function to find shift for a caregiver on a specific date"""
     name_mappings = {
+        'MB': 'MB',
         'Maria B.': 'MB'
     }
     search_name = name_mappings.get(caregiver_name, caregiver_name)
@@ -36,7 +37,7 @@ def get_shift(shifts, date, caregiver_name):
 # Constants for the schedule
 CAREGIVER_COLORS = {
     'Kisha': '#FFB6C1',      # Light pink
-    'Maria B.': '#90EE90',    # Light green
+    'MB': '#90EE90',         # Light green
     'MG': '#98FB98',         # Pale green
     'Amanda': '#87CEEB',      # Sky blue
     'Michelle': '#B0C4DE',    # Light steel blue
@@ -46,7 +47,7 @@ CAREGIVER_COLORS = {
 
 CAREGIVER_ORDER = [
     'Kisha', 
-    'Maria B.', 
+    'MB', 
     'MG',
     'Amanda', 
     'Michelle', 

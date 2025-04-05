@@ -168,7 +168,7 @@
                                 {{ date.strftime('%a') }}<br>
                                 {{ date.strftime('%-d') }}
                             </td>
-                            {% for caregiver in ['Kisha', 'Maria B.', 'MG', 'Amanda', 'Michelle', 'Teontae', 'Fatima'] %}
+                            {% for caregiver in ['Kisha', 'MB', 'MG', 'Amanda', 'Michelle', 'Teontae', 'Fatima'] %}
                                 <td>
                                     {% for shift_type, assigned_caregiver in day_data.shifts.items() %}
                                         {% if assigned_caregiver == caregiver %}
